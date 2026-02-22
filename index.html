@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Volleyball Anime Online</title>
+<script src="/socket.io/socket.io.js"></script>
+<style>
+body{margin:0;background:#ff914d;text-align:center}
+canvas{background:#87ceeb}
+.controls{position:absolute;bottom:10px;width:100%;display:flex;justify-content:space-between}
+button{width:70px;height:70px;border-radius:50%;font-size:20px}
+#aura{position:absolute;width:100px;height:100px;border-radius:50%;background:rgba(255,255,0,0.4);display:none}
+</style>
+</head>
+<body>
+
+<h2 id="score">0 x 0</h2>
+<canvas id="game" width="800" height="400"></canvas>
+
+<div class="controls">
+<div>
+<button ontouchstart="moveLeft()">◀</button>
+<button ontouchstart="moveRight()">▶</button>
+</div>
+<div>
+<button ontouchstart="jump()">⭡</button>
+<button ontouchstart="smash()">💥</button>
+</div>
+</div>
+
+<div id="aura"></div>
+
+<script>
+const socket = io();
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+let player = {x:100,y:300,vy:0};
+let enemy = {x:600,y:300};
+let ball = {x:400,y:200,dx:5,dy:5};
+
+function moveLeft(){ player.x-=15; socket.emit("move", player); }
+function moveRight(){ player.x+=15; socket.emit("move", player); }
+function jump(){ if(player.y>=300) player.vy=-15; }
+
+function smash(){
+ball.dy=-20;
+document.getElementById("aura").style.display="block";
+setTimeout(()=>{document.getElementById("aura").style.display="none"},300);
+}
+
+socket.on("enemyMove", data=> enemy=data);
+socket.on("ballUpdate", data=> ball=data);
+socket.on("scoreUpdate", s=>{
+document.getElementById("score").innerText = s.left + " x " + s.right;
+});
+
+function draw(){
+ctx.clearRect(0,0,800,400);
+ctx.fillStyle="green";
+ctx.fillRect(0,350,800,50);
+ctx.fillStyle="orange";
+ctx.fillRect(player.x,player.y,30,50);
+ctx.fillStyle="blue";
+ctx.fillRect(enemy.x,enemy.y,30,50);
+ctx.beginPath();
+ctx.arc(ball.x,ball.y,10,0,Math.PI*2);
+ctx.fillStyle="white";
+ctx.fill();
+}
+
+function update(){
+player.vy+=1;
+player.y+=player.vy;
+if(player.y>300){player.y=300;player.vy=0;}
+
+ball.x+=ball.dx;
+ball.y+=ball.dy;
+
+if(ball.y>340){
+ball.dy*=-1;
+socket.emit("pointLeft");
+}
+
+if(ball.x>790||ball.x<10){
+ball.dx*=-1;
+}
+
+socket.emit("ball", ball);
+draw();
+}
+
+setInterval(update,20);
+</script>
+</body>
+  </html>
